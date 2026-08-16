@@ -1,13 +1,20 @@
 {
   "name": "cross-chain-liquidity-reconciliation-engine",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Deterministic cross-chain liquidity reconciliation engine with temporal invariant enforcement",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cli": "tsx src/cli.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
 }
