@@ -1,4 +1,7 @@
 import { resolve } from "node:path";
+import {
+  writeFile,
+} from "node:fs/promises";
 
 import {
   loadFixture,
@@ -11,6 +14,26 @@ import {
 import {
   ReconciliationEngine,
 } from "./reconciler.js";
+
+async function writeAudit(
+  engine: ReconciliationEngine,
+  path: string,
+): Promise<void> {
+  const content =
+    engine
+      .auditEntries()
+      .map(
+        (entry) =>
+          JSON.stringify(entry),
+      )
+      .join("\n");
+
+  await writeFile(
+    path,
+    `${content}\n`,
+    "utf8",
+  );
+}
 
 async function main(): Promise<void> {
   const [
@@ -61,28 +84,37 @@ async function main(): Promise<void> {
     );
 
   if (command === "ingest") {
+  console.log(
+    "\nCross-Chain Liquidity Reconciliation Engine\n",
+  );
+
+  for (
+    const event of normalized
+  ) {
+    const result =
+      engine.process(event);
+
     console.log(
-      "\nCross-Chain Liquidity Reconciliation Engine\n",
+      `[${result.decision}] ${event.event_id}`,
     );
-
-    for (
-      const event of normalized
-    ) {
-      const result =
-        engine.process(event);
-
-      console.log(
-        `[${result.decision}] ${event.event_id}`,
-      );
-    }
-
-    printSummary(
-      engine,
-      normalized.length,
-    );
-
-    return;
   }
+
+  printSummary(
+    engine,
+    normalized.length,
+  );
+
+  await writeAudit(
+    engine,
+    "audit/mixed-audit.jsonl",
+  );
+
+  console.log(
+    "\nAudit written to audit/mixed-audit.jsonl",
+  );
+
+  return;
+}
 
   /*
    * Replay starts from an empty engine and
