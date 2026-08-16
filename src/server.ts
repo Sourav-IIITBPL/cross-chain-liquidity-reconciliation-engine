@@ -11,6 +11,11 @@ import {
   ReconciliationEngine,
 } from "./reconciler.js";
 
+import {
+  replayEvents,
+  ReplayError,
+} from "./replay.js";
+
 const __filename =
   fileURLToPath(import.meta.url);
 
@@ -239,6 +244,77 @@ async function handleRequest(
             error instanceof Error
               ? error.message
               : "Malformed event",
+        },
+      );
+
+      return;
+    }
+  }
+
+    /*
+   * ---------------------------------------------
+   * POST /replay
+   * ---------------------------------------------
+   */
+
+  if (
+    method === "POST" &&
+    url.pathname === "/replay"
+  ) {
+    let body: unknown;
+
+    try {
+      const rawBody =
+        await readBody(request);
+
+      if (
+        rawBody.trim() === ""
+      ) {
+        throw new ReplayError(
+          "Request body cannot be empty",
+        );
+      }
+
+      body =
+        JSON.parse(rawBody);
+    } catch (error) {
+      sendJson(
+        response,
+        400,
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid JSON body",
+        },
+      );
+
+      return;
+    }
+
+    try {
+      const result =
+        replayEvents(
+          engine,
+          body,
+        );
+
+      sendJson(
+        response,
+        200,
+        result,
+      );
+
+      return;
+    } catch (error) {
+      sendJson(
+        response,
+        400,
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Replay failed",
         },
       );
 

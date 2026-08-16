@@ -1,0 +1,22 @@
+[
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1500",
+    "timestamp": 1700004000,
+    "source": "router",
+    "event_id": "decrease-base-001",
+    "chain_id": 42161
+  },
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1000",
+    "timestamp": 1700004100,
+    "source": "oracle",
+    "event_id": "decrease-oracle-001",
+    "chain_id": 42161
+  }
+]

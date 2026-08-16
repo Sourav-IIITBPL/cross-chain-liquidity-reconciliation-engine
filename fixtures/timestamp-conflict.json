@@ -1,0 +1,32 @@
+[
+  {
+    "chain": "Ethereum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1000",
+    "timestamp": 1700003000,
+    "source": "router",
+    "event_id": "tie-eth-001",
+    "chain_id": 1
+  },
+  {
+    "chain": "Base",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1200",
+    "timestamp": 1700003000,
+    "source": "router",
+    "event_id": "tie-base-001",
+    "chain_id": 8453
+  },
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1500",
+    "timestamp": 1700003000,
+    "source": "router",
+    "event_id": "tie-arb-001",
+    "chain_id": 42161
+  }
+]
