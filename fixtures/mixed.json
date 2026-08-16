@@ -1,0 +1,72 @@
+[
+  {
+    "chain": "Ethereum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1000",
+    "timestamp": 1700010000,
+    "source": "router",
+    "event_id": "mixed-eth-001",
+    "chain_id": 1
+  },
+  {
+    "chain": "Base",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1200",
+    "timestamp": 1700010100,
+    "source": "router",
+    "event_id": "mixed-base-001",
+    "chain_id": 8453
+  },
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1500",
+    "timestamp": 1700010100,
+    "source": "router",
+    "event_id": "mixed-arb-001",
+    "chain_id": 42161
+  },
+  {
+    "chain": "Ethereum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "900",
+    "timestamp": 1700009000,
+    "source": "router",
+    "event_id": "mixed-stale-001",
+    "chain_id": 1
+  },
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1200",
+    "timestamp": 1700010200,
+    "source": "oracle",
+    "event_id": "mixed-oracle-decrease-001",
+    "chain_id": 42161
+  },
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1300",
+    "timestamp": 1700010300,
+    "source": "router",
+    "event_id": "mixed-router-decrease-001",
+    "chain_id": 42161
+  },
+  {
+    "chain": "Arbitrum",
+    "tokenA": "0x0000000000000000000000000000000000000001",
+    "tokenB": "0x0000000000000000000000000000000000000002",
+    "liquidity": "1300",
+    "timestamp": 1700010300,
+    "source": "router",
+    "event_id": "mixed-router-decrease-001",
+    "chain_id": 42161
+  }
+]
