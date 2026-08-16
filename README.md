@@ -1,355 +1,126 @@
 # Cross-Chain Liquidity Reconciliation Engine
 
-A deterministic, replayable security middleware for reconciling asynchronous liquidity state across Ethereum, Base, and Arbitrum.
+> A deterministic, replayable security engine for reconciling asynchronous liquidity state across Ethereum, Base, and Arbitrum.
 
-The engine validates liquidity events, maintains per-chain state, detects stale and duplicate updates, enforces a temporal liquidity invariant, resolves cross-chain state using deterministic rules, and produces an auditable reconciliation trail.
+The engine processes liquidity events from multiple chains, handles duplicates and out-of-order updates, detects conflicting states, enforces temporal liquidity invariants, resolves conflicts deterministically, and produces an auditable reconciliation trail.
 
-All blockchain activity is simulated through local JSON fixtures. No live blockchain interaction or external database is required.
-
----
-
-## Features
-
-* Event validation and normalization
-* Ethereum, Base, and Arbitrum support
-* Per-token-pair, per-chain liquidity state
-* Idempotent event processing
-* Duplicate event detection
-* Out-of-order and stale event handling
-* Timestamp-based reconciliation
-* Deterministic chain-of-trust resolution
-* Temporal liquidity invariant enforcement
-* Human-readable audit decisions
-* JSONL audit trail
-* Historical event replay
-* Deterministic replay verification
-* Local HTTP API
-* CLI fixture runner
-* Automated test suite
+All blockchain activity is simulated locally using fixtures.
 
 ---
 
-## Architecture
+## What It Does
 
 ```text
-                  Liquidity Events
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-          HTTP API                 CLI
-              │                     │
-              └──────────┬──────────┘
-                         ▼
-                  Event Validation
-                         │
-                         ▼
-                  Normalization
-                         │
-                         ▼
-                  Reconciliation
-                         │
-             ┌───────────┼───────────┐
-             ▼           ▼           ▼
-        Idempotency   Temporal    State
-                       Rules
-                         │
-                         ▼
-                Conflict Resolution
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-       Canonical State          Audit Trail
-                                    │
-                                    ▼
-                                  Replay
+Liquidity Events
+       │
+       ▼
+Validation & Normalization
+       │
+       ▼
+Idempotent Processing
+       │
+       ▼
+Per-Chain State
+       │
+       ├── Timestamp precedence
+       ├── Chain-of-trust
+       └── Temporal invariant
+       │
+       ▼
+Canonical State
+       │
+       ├── Audit Trail
+       └── Deterministic Replay
 ```
 
----
+### Core capabilities
 
-## Technology
-
-* TypeScript
-* Node.js
-* Vitest
-* Local JSON fixtures
-* In-memory state
-* JSONL audit output
-
-No external database or cloud service is required.
-
----
-
-## Event Schema
-
-Events follow the challenge specification:
-
-```json
-{
-  "chain": "Arbitrum",
-  "tokenA": "0x0000000000000000000000000000000000000001",
-  "tokenB": "0x0000000000000000000000000000000000000002",
-  "liquidity": "1500000000000000000",
-  "timestamp": 1700000100,
-  "source": "router",
-  "event_id": "arb-001",
-  "chain_id": 42161
-}
-```
-
-### Fields
-
-| Field       | Description                                          |
-| ----------- | ---------------------------------------------------- |
-| `chain`     | `Ethereum`, `Base`, or `Arbitrum`                    |
-| `tokenA`    | First ERC20 token address                            |
-| `tokenB`    | Second ERC20 token address                           |
-| `liquidity` | Liquidity amount, represented internally as `bigint` |
-| `timestamp` | Unix timestamp                                       |
-| `source`    | `router`, `oracle`, or `bridge`                      |
-| `event_id`  | Unique identifier used for idempotency               |
-| `chain_id`  | Ethereum `1`, Base `8453`, Arbitrum `42161`          |
+- Ethereum, Base, and Arbitrum liquidity events
+- Duplicate and stale event detection
+- Out-of-order event handling
+- Deterministic timestamp reconciliation
+- Chain-of-trust resolution: `Arbitrum > Base > Ethereum`
+- Temporal liquidity decrease enforcement
+- JSONL audit trail
+- Historical event replay
+- CLI and HTTP API
+- Automated tests
+- Local performance benchmark
 
 ---
 
 ## Reconciliation Rules
 
-The engine applies deterministic rules so that the same input and configuration always produce the same result.
+### Timestamp precedence
 
-### 1. Idempotency
+For competing states, the newer timestamp takes precedence.
 
-Every `event_id` is processed at most once.
+### Chain-of-trust
 
-If the same event ID is submitted again:
-
-```text
-HTTP 409 Conflict
-```
-
-No state mutation occurs.
-
----
-
-### 2. Timestamp Precedence
-
-For the same chain and token pair:
-
-```text
-newer timestamp → accepted
-older timestamp → stale update ignored
-```
-
-For example:
-
-```text
-Current:
-liquidity = 2000
-timestamp = 200
-
-Incoming:
-liquidity = 1000
-timestamp = 100
-```
-
-The incoming event is ignored because it is older than the current state.
-
----
-
-### 3. Chain of Trust
-
-When competing states have the same timestamp, the configured chain trust order is:
+When timestamps are equal:
 
 ```text
 Arbitrum > Base > Ethereum
 ```
 
-Therefore:
+### Idempotency
+
+The same `event_id` is processed only once. Duplicate submissions do not mutate state.
+
+### Temporal invariant
+
+Liquidity must not decrease without corresponding on-chain evidence.
+
+For example:
 
 ```text
-same timestamp
-       │
-       ├── Ethereum
-       ├── Base
-       └── Arbitrum
-                 ▲
-                 │
-              selected
+Previous liquidity: 1500
+
+Oracle reports: 1000
+        ↓
+Decrease without on-chain event
+        ↓
+State transition rejected
 ```
 
-Timestamp precedence is evaluated first. Chain trust is only used when timestamps are equal.
+A router-backed decrease can be accepted because it provides the corresponding event evidence.
 
 ---
 
-## Temporal Invariant
-
-The engine enforces the following invariant:
-
-> Liquidity for a given token pair must not decrease across chains over time without a corresponding on-chain event.
-
-For the MVP implementation, a `router` event represents on-chain state-changing evidence.
-
-Therefore:
-
-```text
-Previous liquidity:
-1500
-
-Oracle observation:
-1000
-
-Result:
-LIQUIDITY_DECREASE_WITHOUT_ONCHAIN_EVENT
-```
-
-The established state is preserved.
-
-A decrease backed by a router event is accepted:
-
-```text
-Previous:
-1500
-
-Router event:
-1000
-
-Result:
-ACCEPTED_NEW_STATE
-```
-
-Increases from observation sources are allowed because the invariant specifically concerns unexplained decreases.
-
----
-
-## Canonical State
-
-The engine maintains separate state for each chain.
-
-Example:
-
-```text
-USDC/WETH
-
-Ethereum
-  liquidity: 1000
-  timestamp: 100
-
-Base
-  liquidity: 1200
-  timestamp: 110
-
-Arbitrum
-  liquidity: 1500
-  timestamp: 105
-```
-
-The canonical state is selected deterministically.
-
-In this example:
-
-```text
-Base
-timestamp: 110
-liquidity: 1200
-```
-
-because its timestamp is newer than the other observations.
-
-Cross-chain liquidity differences are not automatically treated as invalid. The engine preserves per-chain observations and uses deterministic reconciliation rules to select the canonical state.
-
----
-
-## Audit Trail
-
-Every reconciliation decision generates an audit record containing:
-
-* `event_id`
-* `decision`
-* `reason`
-* `timestamp`
-* `state_before`
-* `state_after`
-
-Example:
-
-```json
-{
-  "event_id": "oracle-001",
-  "decision": "LIQUIDITY_DECREASE_WITHOUT_ONCHAIN_EVENT",
-  "reason": "Liquidity decreased on Arbitrum from 1500 to 1000 without a router-sourced on-chain event.",
-  "timestamp": 1700000200,
-  "state_before": {},
-  "state_after": {}
-}
-```
-
-Audit records are also written as JSON Lines to:
-
-```text
-audit/audit.jsonl
-```
-
----
-
-## Replay
-
-Historical events can be replayed in their original order.
-
-The replay engine:
-
-1. Loads the requested event IDs.
-2. Resets the current reconciliation state.
-3. Processes the events in the supplied order.
-4. Reproduces state transitions.
-5. Recreates the audit trail.
-
-The replay tests verify that:
-
-```text
-Original State == Replayed State
-
-Original Audit == Replayed Audit
-```
-
-This provides deterministic and reproducible state reconstruction.
-
----
-
-## HTTP API
-
-### `GET /health`
-
-Returns service health.
-
-```json
-{
-  "status": "ok"
-}
-```
-
----
-
-### `GET /state`
-
-Returns the current reconciled state.
+## Quick Start
 
 ```bash
-curl http://localhost:3000/state
+git clone https://github.com/Sourav-IIITBPL/cross-chain-liquidity-reconciliation-engine.git
+cd cross-chain-liquidity-reconciliation-engine
+
+npm install
+npm test
+npm run build
 ```
 
 ---
 
-### `GET /audit`
+## Run the Engine
 
-Returns reconciliation audit records.
+Start the HTTP server:
 
 ```bash
-curl http://localhost:3000/audit
+npm start
 ```
 
----
+Server:
 
-### `POST /events`
+```text
+http://localhost:3000
+```
 
-Processes a liquidity event.
+Health check:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Process an event:
 
 ```bash
 curl -X POST http://localhost:3000/events \
@@ -366,57 +137,133 @@ curl -X POST http://localhost:3000/events \
   }'
 ```
 
-Responses:
+### HTTP endpoints
 
 ```text
-200 OK  → valid event processed
-400     → malformed/invalid event
-409     → duplicate event_id
+GET  /health
+GET  /state
+GET  /audit
+POST /events
+POST /replay
 ```
 
 ---
 
-### `POST /replay`
+## CLI Demo
 
-Replay a sequence of previously processed event IDs.
+Run the mixed edge-case scenario:
 
 ```bash
-curl -X POST http://localhost:3000/replay \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event_ids": [
-      "eth-001",
-      "base-001",
-      "arb-001"
-    ]
-  }'
+npm run demo
 ```
+
+Replay the same event sequence:
+
+```bash
+npm run replay
+```
+
+The mixed fixture covers:
+
+- Normal state updates
+- Timestamp conflicts
+- Chain-of-trust
+- Stale updates
+- Unauthorized liquidity decreases
+- Legitimate decreases
+- Duplicate events
 
 ---
 
-## CLI
+## Screenshots
 
-The same reconciliation engine can be executed against local fixtures.
+### Reconciliation Demo
 
-### Ingest a fixture
+![Reconciliation demo](docs/screenshots/demo.png)
+
+Live fixture processing showing deterministic reconciliation decisions across multiple edge cases.
+
+### Automated Tests
+
+![Automated test suite](docs/screenshots/tests.png)
+
+Automated tests covering validation, reconciliation, invariant enforcement, and deterministic replay.
+
+### Deterministic Replay
+
+![Replay](docs/screenshots/replay.png)
+
+Historical events replayed to reproduce the reconciled state.
+
+### Performance Benchmark
+
+![Performance benchmark](docs/screenshots/benchmark.png)
+
+Local 10,000-event benchmark with throughput and memory measurements.
+
+
+---
+
+## Testing
+
+Run the complete test suite:
 
 ```bash
-npm run cli -- ingest fixtures/basic.json
+npm test
 ```
 
-### Replay a fixture
+Build the project:
 
 ```bash
-npm run cli -- replay fixtures/basic.json
+npm run build
 ```
 
-The CLI prints reconciliation decisions, summary information, and the resulting canonical state.
+The tests cover:
+
+- Event validation
+- Duplicate handling
+- Timestamp ordering
+- Chain-of-trust
+- Temporal invariant enforcement
+- State consistency
+- Deterministic replay
+- Replay failure handling
+
+---
+
+## Performance
+
+Run:
+
+```bash
+npm run benchmark
+```
+
+The benchmark processes 10,000 local events and reports:
+
+- Throughput
+- Elapsed time
+- RSS memory
+- Heap usage
+
+The benchmark is designed to verify the challenge's local performance and memory requirements.
+
+---
+
+## Audit Trail
+
+Reconciliation decisions are recorded as JSONL.
+
+```text
+audit/
+└── mixed-audit.jsonl
+```
+
+Each decision contains the event context, decision, reason, timestamp, and state transition information.
 
 ---
 
 ## Fixtures
-
-The `fixtures/` directory contains scenarios covering the main reconciliation edge cases:
 
 ```text
 fixtures/
@@ -429,197 +276,77 @@ fixtures/
 └── mixed.json
 ```
 
-### Scenarios
-
-* Basic multi-chain state updates
-* Duplicate events
-* Out-of-order timestamps
-* Equal timestamp chain conflicts
-* Unauthorized liquidity decreases
-* Legitimate router-backed decreases
-* Mixed interacting edge cases
-
-`mixed.json` combines several of these conditions into a single replayable scenario.
-
 ---
 
 ## Project Structure
 
 ```text
-cross-chain-liquidity-reconciliation-engine/
-│
-├── src/
-│   ├── types.ts
-│   ├── validation.ts
-│   ├── state.ts
-│   ├── reconciler.ts
-│   ├── audit.ts
-│   ├── replay.ts
-│   ├── fixtures.ts
-│   ├── server.ts
-│   └── cli.ts
-│
-├── tests/
-│   ├── helpers.ts
-│   ├── validation.test.ts
-│   ├── reconciliation.test.ts
-│   ├── invariant.test.ts
-│   └── replay.test.ts
-│
-├── fixtures/
-│   ├── basic.json
-│   ├── duplicate.json
-│   ├── out-of-order.json
-│   ├── timestamp-conflict.json
-│   ├── unauthorized-decrease.json
-│   ├── legitimate-decrease.json
-│   └── mixed.json
-│
-├── audit/
-│   └── audit.jsonl
-│
-├── package.json
-├── tsconfig.json
-└── README.md
+src/
+├── audit.ts
+├── benchmark.ts
+├── cli.ts
+├── fixtures.ts
+├── reconciler.ts
+├── replay.ts
+├── server.ts
+├── state.ts
+├── types.ts
+└── validation.ts
+
+tests/
+├── helpers.ts
+├── invariant.test.ts
+├── reconciliation.test.ts
+├── replay.test.ts
+└── validation.test.ts
+
+fixtures/
+└── *.json
+
+audit/
+└── mixed-audit.jsonl
+
+docs/
+└── screenshots/
+    ├── demo.png
+    ├── tests.png
+    ├── replay.png
+    ├── benchmark.png
 ```
 
 ---
 
-## Setup
+## Design Principles
 
-Clone the repository:
+**Deterministic**  
+Same input and configuration produce the same reconciliation result.
 
-```bash
-git clone <REPOSITORY_URL>
-cd cross-chain-liquidity-reconciliation-engine
-```
+**Idempotent**  
+Repeated processing of the same event does not mutate state.
 
-Install dependencies:
+**Replayable**  
+Historical event sequences can reproduce state transitions.
 
-```bash
-npm install
-```
+**Auditable**  
+Reconciliation decisions retain their reasoning and state context.
 
----
-
-## Run the Engine
-
-Start the HTTP server:
-
-```bash
-npm start
-```
-
-The server runs at:
-
-```text
-http://localhost:3000
-```
+**Local-first**  
+No external database, cloud service, Kafka, Kubernetes, or live blockchain RPC is required.
 
 ---
 
-## Run Tests
+## Scope
 
-Run the complete automated test suite:
+This implementation focuses on the reconciliation and security-enforcement middleware defined by the MVP.
 
-```bash
-npm test
-```
+Blockchain interactions are simulated through deterministic local fixtures.
 
-Build the TypeScript project:
+Possible future extensions include:
 
-```bash
-npm run build
-```
+- Time-travel debugging
+- Mock Chainlink Oracle integration
+- Dynamic chain reliability weighting
+- Richer CLI visualization
+- Production persistence
+- On-chain enforcement integration
 
----
-
-## Run a Fixture
-
-```bash
-npm run cli -- ingest fixtures/mixed.json
-```
-
-Replay the same fixture:
-
-```bash
-npm run cli -- replay fixtures/mixed.json
-```
-
----
-
-## Design Goals
-
-The engine is designed around four core properties:
-
-### Deterministic
-
-The same ordered input events and configuration produce the same reconciliation decisions and state.
-
-### Idempotent
-
-Repeated processing of the same `event_id` does not mutate state.
-
-### Replayable
-
-Historical event sequences can be reapplied to reconstruct state transitions.
-
-### Auditable
-
-Every reconciliation decision records the event, reason, and state transition context.
-
----
-
-## Security Model
-
-The engine treats liquidity state as a security-sensitive observation rather than simply accepting the latest value.
-
-Important protections include:
-
-```text
-Duplicate event
-      ↓
-No second state mutation
-
-Stale event
-      ↓
-Ignored
-
-Equal timestamp conflict
-      ↓
-Deterministic chain trust
-
-Liquidity decrease without
-on-chain evidence
-      ↓
-Rejected from state transition
-
-Historical sequence
-      ↓
-Deterministic replay
-```
-
-The engine does not use ML/LLM-based conflict resolution, live blockchain calls, external databases, or distributed infrastructure.
-
----
-
-## Current Scope
-
-This implementation focuses on the deterministic reconciliation middleware and local simulation required for the MVP.
-
-Blockchain interactions are represented by fixtures rather than live Ethereum, Base, or Arbitrum RPC calls.
-
-Future extensions could include:
-
-* Time-travel debugging
-* Mock Chainlink Oracle integration
-* Dynamic chain reliability weighting
-* Richer CLI visualization
-* Production persistence layer
-* On-chain security enforcement integration
-
----
-
-## License
-
-MIT
